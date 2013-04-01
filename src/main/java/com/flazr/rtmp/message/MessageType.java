@@ -67,9 +67,10 @@ public enum MessageType implements ValueToEnum.IntValue {
             case COMMAND_AMF0:
             case COMMAND_AMF3: // TODO verify
                 return 3;
+            case AUDIO:
+            	return 6;
             case METADATA_AMF0:
             case METADATA_AMF3: // TODO verify
-            case AUDIO:
             case VIDEO:
             case AGGREGATE:
             default: // TODO verify

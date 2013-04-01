@@ -143,6 +143,10 @@ public class Control extends AbstractMessage {
     public int getBufferLength() {
         return bufferLength;
     }
+    
+    public int getStreamId() {
+    	return streamId;
+    }
 
     @Override
     public ChannelBuffer encode() {

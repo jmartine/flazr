@@ -101,6 +101,27 @@ public abstract class RtmpPusher implements Runnable {
                     }
                 }
             }
+            else if (message.getHeader().isAudio()) {
+                final long now = System.currentTimeMillis();
+                currentPosition = message.getHeader().getTime();
+                if (startTime == -1) {
+                    startTime = now;
+                }
+                final long elapsedTime = now - startTime;
+                if (playDuration > 0 && currentPosition > playDuration) {
+                    logger.info("stopping, completed playing requested duration");
+                    stopped = true;
+                    break;
+                }
+                final long delay = currentPosition - elapsedTime - bufferDuration;
+                if (delay > 0) { // sleep
+                    try {
+                        Thread.sleep(delay);  //Should come out to be ~20 ms
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
             onMessageInternal(message);
         }
         started = false;

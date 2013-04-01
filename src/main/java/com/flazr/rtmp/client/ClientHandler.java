@@ -96,7 +96,8 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
         }
     }
 
-    private MyPublisher publisher;
+    private Map<String, Integer> streamNameToId = new HashMap<String, Integer>();
+    private Map<Integer, MyPublisher> publishers = new HashMap<Integer, MyPublisher>();
 
     private Connection myConnection = new Connection() {
 
@@ -113,7 +114,7 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
         }
 
         private void publish(final int streamId, String streamName, RtmpReader reader, PublishType publishType, int bufferSize, ResultHandler handler) {
-            publisher = new MyPublisher(channel, streamId, bufferSize, new RtmpPusher(reader, streamId) {
+                MyPublisher publisher = new MyPublisher(channel, streamId, bufferSize, new RtmpPusher(reader, streamId) {
                 @Override
                 public void onMessage(RtmpMessage message) {
                     logger.debug("writing: {}", message);
@@ -124,6 +125,8 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
                     Channels.write(channel, Command.unpublish(streamId));
                 }
             });
+            streamNameToId.put(streamName, streamId);
+            publishers.put(streamId, publisher);
             writeCommandExpectingResult(channel,
                 Command.publish(streamId, streamName, publishType),
                 handler);
@@ -203,8 +206,8 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
         logger.info("channel closed: {}", e);
         logic.closed(myConnection);
         super.channelClosed(ctx, e);
-        if (publisher != null) {
-            publisher.pusher.close();
+        for(MyPublisher publisher: publishers.values()){
+        	publisher.pusher.close();
         }
         for(RtmpWriter writer : writers.values()) {
             writer.close();
@@ -240,9 +243,10 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
                         }
                         break;
                     case STREAM_BEGIN:
+                        MyPublisher publisher = publishers.get(control.getStreamId());
                         if(publisher != null && !publisher.pusher.isStarted()) {
-                            publisher.start(new ChunkSize(4096));
-                            return;
+                          publisher.start(new ChunkSize(4096));
+                          return;
                         }
                         break;
                     default:
@@ -297,16 +301,25 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
                         channel.close();
                         return;
                     }
-                    if(code.equals("NetStream.Publish.Start") && publisher.pusher != null && !publisher.pusher.isStarted())
+                    if(code.equals("NetStream.Publish.Start"))
                     {
+                      final String sName = (String) temp.get("details");
+                      MyPublisher publisher = publishers.get(streamNameToId.get(sName));
+                      if(publisher != null && !publisher.pusher.isStarted())
+                      {
                         publisher.start(new ChunkSize(4096));
                         return;
+                      }
                     }
-                    if (publisher != null && code.equals("NetStream.Unpublish.Success")) {
+                    if(code.equals("NetStream.Unpublish.Success")){
+                      final String sName = (String) temp.get("details");
+                      MyPublisher publisher = publishers.get(streamNameToId.get(sName));
+                      if(publisher != null && publisher.pusher.isStarted()){
                         logger.info("unpublish success, closing channel");
                         ChannelFuture future = Channels.write(channel, Command.closeStream(publisher.streamId));
                         future.addListener(ChannelFutureListener.CLOSE);
                         return;
+                      }
                     }
                 } else if(name.equals("close")) {
                     logger.info("server called close, closing channel");
