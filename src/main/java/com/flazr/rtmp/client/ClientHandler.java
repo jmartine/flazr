@@ -52,6 +52,7 @@ import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
+import org.jboss.netty.handler.ssl.SslHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -198,7 +199,21 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
     @Override
     public void channelConnected(ChannelHandlerContext ctx, final ChannelStateEvent e) {
         logger.info("handshake complete, sending 'connect'");
-        logic.connected(myConnection);
+
+        SslHandler sslHandler = ctx.getPipeline().get(SslHandler.class);
+        if (sslHandler != null) {
+          ChannelFuture future = sslHandler.handshake();
+          future.addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture arg0) throws Exception {
+              logic.connected(myConnection);
+            }
+          });
+        }
+        else {
+          //ssl not used
+          logic.connected(myConnection);
+        }
     }
 
     @Override

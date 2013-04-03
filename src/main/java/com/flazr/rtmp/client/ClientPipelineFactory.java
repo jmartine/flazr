@@ -25,6 +25,8 @@ import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
 import org.jboss.netty.handler.codec.http.HttpClientCodec;
+import org.jboss.netty.handler.ssl.SslHandler;
+import javax.net.ssl.SSLEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,19 +54,19 @@ public class ClientPipelineFactory implements ChannelPipelineFactory {
     public ChannelPipeline getPipeline() {
         final ChannelPipeline pipeline = Channels.pipeline();
 
-        if(protocol.useSsl()) {
-            // TODO: add SSL encoder / decoder, to support RTMPS (in it's two forms: http proxied and native)
-            throw new UnsupportedOperationException("SSL is not currently supported");
-//        SSLEngine engine = DummySslContextFactory.getClientContext().createSSLEngine();
-//        engine.setUseClientMode(true);
-//        pipeline.addLast("ssl", new SslHandler(engine));
+        if(protocol == RtmpProtocol.RTMPS_NATIVE) {
+          logger.info("{} requested, initializing SSL", protocol);
+          SSLEngine engine = DummySslContextFactory.getClientContext().createSSLEngine();
+          engine.setUseClientMode(true);
+          pipeline.addLast("ssl", new SslHandler(engine));
         }
-        if(protocol.useHttp()) {
-            logger.info("{} requested, initializing http tunnel", protocol);
-            pipeline.addLast("httpcodec", new HttpClientCodec());
-            pipeline.addLast("httpchunk", new HttpChunkAggregator(1048576));
-            pipeline.addLast("httptunnel", new ClientHttpTunnelHandler(host));
-        }
+        // Not sure if this is right???
+//        if(protocol == RtmpProtocol.RTMPS_NATIVE || protocol.useHttp()) {
+//            logger.info("{} requested, initializing http tunnel", protocol);
+//            pipeline.addLast("httpcodec", new HttpClientCodec());
+//            pipeline.addLast("httpchunk", new HttpChunkAggregator(1048576));
+//            pipeline.addLast("httptunnel", new ClientHttpTunnelHandler(host));
+//        }
         pipeline.addLast("handshaker", new ClientHandshakeHandler(protocol.useRtmpe(), swfData, clientVersionToUse));
         pipeline.addLast("decoder", new RtmpDecoder());
         pipeline.addLast("encoder", new RtmpEncoder());
