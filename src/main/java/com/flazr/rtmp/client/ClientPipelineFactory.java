@@ -19,16 +19,18 @@
 
 package com.flazr.rtmp.client;
 
-import com.flazr.rtmp.*;
+import com.flazr.rtmp.RtmpDecoder;
+import com.flazr.rtmp.RtmpEncoder;
+import com.flazr.rtmp.RtmpProtocol;
+import com.flazr.rtmp.SwfData;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
-import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
-import org.jboss.netty.handler.codec.http.HttpClientCodec;
 import org.jboss.netty.handler.ssl.SslHandler;
-import javax.net.ssl.SSLEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.SSLEngine;
 
 public class ClientPipelineFactory implements ChannelPipelineFactory {
 
@@ -58,7 +60,9 @@ public class ClientPipelineFactory implements ChannelPipelineFactory {
           logger.info("{} requested, initializing SSL", protocol);
           SSLEngine engine = DummySslContextFactory.getClientContext().createSSLEngine();
           engine.setUseClientMode(true);
-          pipeline.addLast("ssl", new SslHandler(engine));
+          SslHandler sslHandler = new SslHandler();
+          sslHandler.setIssueHandshake(true);
+          pipeline.addLast("ssl", sslHandler;
         }
         // Not sure if this is right???
 //        if(protocol == RtmpProtocol.RTMPS_NATIVE || protocol.useHttp()) {
