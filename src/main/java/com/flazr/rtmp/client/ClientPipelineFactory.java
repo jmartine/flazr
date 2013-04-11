@@ -60,9 +60,9 @@ public class ClientPipelineFactory implements ChannelPipelineFactory {
           logger.info("{} requested, initializing SSL", protocol);
           SSLEngine engine = DummySslContextFactory.getClientContext().createSSLEngine();
           engine.setUseClientMode(true);
-          SslHandler sslHandler = new SslHandler();
+          SslHandler sslHandler = new SslHandler(engine);
           sslHandler.setIssueHandshake(true);
-          pipeline.addLast("ssl", sslHandler;
+          pipeline.addLast("ssl", sslHandler);
         }
         // Not sure if this is right???
 //        if(protocol == RtmpProtocol.RTMPS_NATIVE || protocol.useHttp()) {
