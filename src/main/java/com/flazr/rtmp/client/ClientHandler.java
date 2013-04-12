@@ -199,21 +199,7 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
     @Override
     public void channelConnected(ChannelHandlerContext ctx, final ChannelStateEvent e) {
         logger.info("handshake complete, sending 'connect'");
-
-        SslHandler sslHandler = ctx.getPipeline().get(SslHandler.class);
-        if (sslHandler != null) {
-          ChannelFuture future = sslHandler.handshake();
-          future.addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture arg0) throws Exception {
-              logic.connected(myConnection);
-            }
-          });
-        }
-        else {
-          //ssl not used
-          logic.connected(myConnection);
-        }
+        logic.connected(myConnection);
     }
 
     @Override
