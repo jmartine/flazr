@@ -62,6 +62,7 @@ public class RtmpHeader {
     private int deltaTime;
     private int time;    
     private int size;
+    private int extendedTimeStamp;
     private MessageType messageType;
     private int streamId;
 
@@ -85,43 +86,56 @@ public class RtmpHeader {
         }
         headerType = Type.valueToEnum(headerTypeInt);
         //========================= REMAINING HEADER ===========================
+        
+      //  logger.warn("channelId: {} type: {}", channelId, headerType);
+        
         final RtmpHeader prevHeader = incompleteHeaders[channelId];
         // logger.debug("so far: {}, prev {}", this, prevHeader);
         switch(headerType) {
-            case LARGE:
+            case LARGE:  //Type 0
                 time = in.readMedium();
                 size = in.readMedium();
                 messageType = MessageType.valueToEnum(in.readByte());
                 streamId = Utils.readInt32Reverse(in);
-                if(time == MAX_NORMAL_HEADER_TIME) {
-                    time = in.readInt();
+                if((time & MAX_NORMAL_HEADER_TIME) == MAX_NORMAL_HEADER_TIME) { //16777215
+                    logger.warn("getExtendedTimeStamp for type LARGE");
+                    extendedTimeStamp = in.readInt(); //extended timestamp
                 }
                 break;
-            case MEDIUM:
+            case MEDIUM: //Type 1
                 deltaTime = in.readMedium();
                 size = in.readMedium();
                 messageType = MessageType.valueToEnum(in.readByte());
                 streamId = prevHeader.streamId;
-                if(deltaTime == MAX_NORMAL_HEADER_TIME) {
-                    deltaTime = in.readInt();
+                if((deltaTime & MAX_NORMAL_HEADER_TIME) == MAX_NORMAL_HEADER_TIME) {
+                    logger.warn("getExtendedTimeStamp for type MEDIUM");
+                    extendedTimeStamp = in.readInt();
                 }
                 break;
-            case SMALL:
+            case SMALL: // Type 2
                 deltaTime = in.readMedium();
                 size = prevHeader.size;
                 messageType = prevHeader.messageType;
                 streamId = prevHeader.streamId;
-                if(deltaTime == MAX_NORMAL_HEADER_TIME) {
-                    deltaTime = in.readInt();
+                if((deltaTime & MAX_NORMAL_HEADER_TIME) == MAX_NORMAL_HEADER_TIME) {
+                  logger.warn("getExtendedTimeStamp for type SMALL");
+                    extendedTimeStamp = in.readInt();
                 }
                 break;
-            case TINY:
+            case TINY: // Type 3
                 headerType = prevHeader.headerType; // preserve original
                 time = prevHeader.time;
                 deltaTime = prevHeader.deltaTime;
                 size = prevHeader.size;
                 messageType = prevHeader.messageType;
                 streamId = prevHeader.streamId;
+                
+                //Extended timestamp is in type 3 messages when the most recent type 0,1 or 2 chuck of 
+                //the same chunk stream id indicates the presence of an extended timestamp
+                if((time & MAX_NORMAL_HEADER_TIME) == MAX_NORMAL_HEADER_TIME || (deltaTime & MAX_NORMAL_HEADER_TIME) == MAX_NORMAL_HEADER_TIME) {
+                  logger.warn("getExtendedTimeStamp for type TINY");
+                  extendedTimeStamp = in.readInt();
+                }
                 break;
         }        
     }

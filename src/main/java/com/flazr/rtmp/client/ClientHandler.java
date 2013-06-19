@@ -313,14 +313,12 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
                       }
                     }
                     if(code.equals("NetStream.Unpublish.Success")){
-                      final String sName = (String) temp.get("details");
-                      MyPublisher publisher = publishers.get(streamNameToId.get(sName));
-                      if(publisher != null && publisher.pusher.isStarted()){
-                        logger.info("unpublish success, closing channel");
-                        ChannelFuture future = Channels.write(channel, Command.closeStream(publisher.streamId));
-                        future.addListener(ChannelFutureListener.CLOSE);
-                        return;
-                      }
+                      logger.info("unpublish success, closing channel");
+                      for(MyPublisher publisher: publishers.values()){
+                          logger.info("JM close stream: {}", publisher.streamId);
+                          ChannelFuture future = Channels.write(channel, Command.closeStream(publisher.streamId));
+                          future.addListener(ChannelFutureListener.CLOSE);
+                        }
                     }
                 } else if(name.equals("close")) {
                     logger.info("server called close, closing channel");
